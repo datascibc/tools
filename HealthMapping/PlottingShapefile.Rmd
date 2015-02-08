@@ -1,0 +1,103 @@
+---
+title: "Plotting Shapefiles with ggplot2"
+author: "Danny Wong"
+date: "Friday, January 30, 2015"
+output: html_document
+---
+
+This is a script for plotting shapefiles in R using ggplot2.
+
+Sources: 
+
+* Method
+    - https://github.com/hadley/ggplot2/wiki/plotting-polygon-shapefiles
+    - http://prabhasp.com/wp/how-to-make-choropleths-in-r/
+* Data
+    - http://www.sharegeo.ac.uk/handle/10672/553
+    - http://www.opendoorlogistics.com/downloads/
+    - http://www.doogal.co.uk/
+    
+In many areas of public health medicine, data may be better represented on a map as a choropleth--a thematic map in which areas are proportionally shaded/coloured according to the statistical variable being displayed, e.g. mortality rate, or disease prevalence. 
+
+Here I show how to make a choropleth with UK postcode boundaries in R. I then overlay the map with some discrete coordinates, which could represent the site of some hospitals in the UK.
+
+
+```{r}
+#Load the required packages
+require(rgdal)
+require(maptools)
+require(ggplot2)
+
+#Load postcode lists
+Postcodedata <- read.csv("data/postcode.csv")
+
+#Generate test data
+set.seed(1)
+Postcodedata$data <- rnorm(124, mean = 50, sd = 25)
+
+#Load some Geocoded Hospitals 
+hospitals <- read.csv("data/sitesfinal_Geocoded.csv")
+
+#Load the shapefile data from http://www.sharegeo.ac.uk/handle/10672/553
+GBpostcodes <- readShapeSpatial("shapefiles/GB_Postcodes/PostalArea.shp")
+#Verify it loaded correctly
+plot(GBpostcodes)
+
+##This shapefile is in the British National Grid Projection OSGB1936 (EPSG:27700), so we need to convert it to the WGS84 coordinate reference system. However I have been having problems getting this to work because of the error message, reproduced below
+#proj4string(GBpostcodes) <- "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +datum=OSGB36 +units=m +no_defs"
+#GBpostcodes_WGS84 <- spTransform(GBpostcodes, CRS("+proj=longlat +datum=WGS84"))
+
+#Plot the shapes using ggplot2
+#GBpostcodes_WGS84 <- fortify(GBpostcodes_WGS84, region = "PostArea") #I keep getting this error "Error: TopologyException: Input geom 0 is invalid: Self-intersection at or near point -6.5346772511079969 58.098792701899775 at -6.5346772511079969 58.098792701899775"
+
+#As a result, I will plot the shapefiles in its existing CRS, and force the lat/lon codes for the points into the same CRS
+GBpostcodes <- fortify(GBpostcodes, region = "PostArea")
+
+#Transform the hospitals coordinates into the British National Grid Projection OSGB1936 (EPSG:27700)
+hospitals <- SpatialPoints(hospitals[,c("lon","lat")],proj4string=CRS("+proj=longlat +datum=WGS84"))
+hospitals <- spTransform(hospitals,CRS("+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +datum=OSGB36 +units=m +no_defs"))
+hospitals.df <- data.frame(coordinates(hospitals))
+
+map <- ggplot(Postcodedata) + 
+  geom_map(map = GBpostcodes, aes(map_id = Label, fill = data)) + 
+  expand_limits(x = GBpostcodes$long, y = GBpostcodes$lat)
+map + geom_point(data = hospitals.df, mapping = aes(x = lon, y = lat,fill = NULL,group = NULL), colour = "red", size = 1)
+```
+
+There are a number of problems with the shapefile used for the above plot:
+
+1. The shapefile is huge: 40.1mb! Thus plotting takes forever
+2. The shapefile has missed out Northern Ireland. So only displays Great Britain and not the entire UK
+3. The shapefile uses the British National Grid Projection, and hence we need to workaround it if we have geocoded latitude and longitude coordinates in the WGS84 coordinate reference system.
+
+Having a look around online, we find that there are other shapefiles that we can use, one that is maintained by Open Door Logistics at http://www.opendoorlogistics.com/downloads/
+
+```{r}
+#Load the required packages
+require(maptools)
+require(ggplot2)
+
+#Load postcode lists
+Postcodedata <- read.csv("data/postcode.csv")
+
+#Generate test data
+set.seed(1)
+Postcodedata$data <- rnorm(124, mean = 50, sd = 25)
+
+#Load some Geocoded Hospitals 
+hospitals <- read.csv("data/sitesfinal_Geocoded.csv")
+
+#Load the shapefile data from http://www.opendoorlogistics.com/downloads/
+UKpostcodes <- readShapeSpatial("shapefiles/opendata/Areas.shp")
+#Verify it loaded correctly
+plot(UKpostcodes)
+
+UKpostcodes <- fortify(UKpostcodes, region = "name")
+map <- ggplot(Postcodedata) + 
+  geom_map(map = UKpostcodes, aes(map_id = Label, fill = data)) + 
+#  coord_map() +
+  expand_limits(x = UKpostcodes$long, y = UKpostcodes$lat)
+map + geom_point(data = hospitals, mapping = aes(x = lon, y = lat,fill = NULL,group = NULL), colour = "red", size = 1)
+```
+
+The resulting plot from the second code chunk is much faster to render, and shows other parts of the UK (not just Great Britain), including Northern Ireland.

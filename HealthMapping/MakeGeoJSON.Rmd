@@ -1,0 +1,35 @@
+---
+title: "Making a GeoJSON file"
+author: "Danny Wong"
+date: "Monday, November 17, 2014"
+output: html_document
+---
+
+This is a script which makes a GeoJSON file from the Hospitals list from NHS Choices that can be fed into a map on Github.
+
+*Data
+    - path: ./data/Hospital.csv
+    - details (e.g. contact details/addresses) of Hospitals in the UK, incl. private hospitals
+    - this file already contains latitude and longitude codes for the hospital sites! So no need to geocode
+    - from: http://media.nhschoices.nhs.uk/data/foi/Hospital.csv
+
+``` {r}
+#Load the required libraries
+library(rgdal)
+
+#Load the data
+hospitalsites <- read.csv("data/Hospital.csv", header = TRUE, sep ="¬", na.strings = "")
+
+#Clean the data to remove the NA strings from coordinates
+data_to_del <- hospitalsites[is.na(hospitalsites$Latitude),]
+hospitalsites <- hospitalsites[!is.na(hospitalsites$Latitude),]
+
+#Coerce the coordinates into a SpatialPointsDataFrame
+hospitalsites.SP  <- SpatialPointsDataFrame(coords = hospitalsites[,c(16,15)], data = hospitalsites[,-c(16,15)])
+
+#Write the dataframe into a GeoJSON format
+writeOGR(hospitalsites.SP, dsn = "hospitalsites" , layer = "hospitalsites.SP", driver = "GeoJSON")
+
+#Rename the file to have the suffix .GeoJSON and move it to the map folder
+file.rename(from = "hospitalsites", to = "map/hospitalsites.geojson")
+```
