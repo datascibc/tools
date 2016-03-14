@@ -11,11 +11,12 @@ This tool solves a problem of maintaining a set of versioned tools that your cod
 2. Install Vagrant from https://www.vagrantup.com
 3. Install VirtualBox from https://www.virtualbox.org 
 4. Open a terminal to the folder you cloned this repo from.
-5. Run > vagrant up
+5. Run: 
+> vagrant up
 
 ## What happens next
 
-The command will download and install an Ubuntu distribution with pre-installed packages for datascience:
+The command will download and install an Ubuntu distribution with pre-installed packages for datascience including:
 
 **Python**
 IPython Notebook, NumPy, SciPy, matplotlib, pandas, scikit-learn, and SymPy.
