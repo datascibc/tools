@@ -11,7 +11,8 @@ This tool solves a problem of maintaining a set of versioned tools that your cod
 2. Install Vagrant from https://www.vagrantup.com
 3. Install VirtualBox from https://www.virtualbox.org 
 4. Open a terminal to the folder you cloned this repo from.
-5. Run: 
+5. Run:
+
 > vagrant up
 
 ## What happens next
